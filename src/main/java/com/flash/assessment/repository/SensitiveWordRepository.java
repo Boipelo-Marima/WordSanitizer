@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface SensitiveWordRepository extends JpaRepository<SensitiveWord, Long> {
     List<SensitiveWord> findAll();
+    boolean existsByWordIgnoreCase(String word);
 }

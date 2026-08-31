@@ -9,18 +9,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 @RestController
-@RequestMapping("/api/messages")
+@RequestMapping("/api/message")
 public class MessageController {
 
-    @Autowired
-    private SanitizerService sanitizationService;
+    private final SanitizerService sanitizerService;
+
+    public MessageController(SanitizerService sanitizerService){
+        this.sanitizerService = sanitizerService;
+    }
 
     @PostMapping("/sanitize")
-    public ResponseEntity<Map<String, String>> sanitizeMessage(@RequestBody UserMessage request) {
-        String sanitizedText = sanitizationService.processMessage(request.getMessage());
-        return ResponseEntity.ok(Map.of("original", request.getMessage(), "sanitized", sanitizedText));
+    public ResponseEntity<String> sanitizeMessage(@RequestBody UserMessage request) {
+        String sanitizedText = sanitizerService.processMessage(request.getMessage());
+        return ResponseEntity.ok(sanitizedText);
     }
 }
