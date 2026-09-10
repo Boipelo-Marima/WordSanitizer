@@ -13,16 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-public class SanitizerService implements ApplicationRunner {
+public class SanitizerService {
 
     private final SensitiveWordRepository sensitiveWordRepository;
 
     private final SensitivityTrie sensitivityTrie;
-
-    @Override
-    public void run(@NonNull ApplicationArguments args) {
-        refreshDictionary();
-    }
 
     public SanitizerService(SensitiveWordRepository sensitiveWordRepository, SensitivityTrie sensitivityTrie){
         this.sensitiveWordRepository = sensitiveWordRepository;
@@ -31,7 +26,6 @@ public class SanitizerService implements ApplicationRunner {
 
     public void refreshDictionary() {
         List<SensitiveWord> sensitiveWords = sensitiveWordRepository.findAll();
-        // Clear and re-populate logic if reloading dynamically
         for (SensitiveWord sensitiveWord : sensitiveWords) {
             sensitivityTrie.insert(sensitiveWord.getWord());
         }
@@ -39,6 +33,7 @@ public class SanitizerService implements ApplicationRunner {
 
     public String processMessage(String message) {
         if (message.isEmpty()) throw new IllegalArgumentException("Empty message.");
+        if(!sensitivityTrie.isPopulated()) refreshDictionary();
         return sensitivityTrie.sanitize(message, "*");
     }
 

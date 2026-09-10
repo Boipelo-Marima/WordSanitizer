@@ -49,4 +49,6 @@ public class SensitivityTrie {
         }
         return new String(chars);
     }
+
+    public boolean isPopulated(){return !root.children.isEmpty(); }
 }
