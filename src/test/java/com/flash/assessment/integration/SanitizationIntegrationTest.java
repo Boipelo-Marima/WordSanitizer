@@ -1,6 +1,7 @@
 package com.flash.assessment.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flash.assessment.dto.MessageDto;
 import com.flash.assessment.model.SensitiveWord;
 import com.flash.assessment.model.UserMessage;
 import com.flash.assessment.repository.SensitiveWordRepository;
@@ -92,5 +93,21 @@ public class SanitizationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError()).andReturn().getResponse().getContentAsString();
         assertEquals("{\"detail\":\"An unexpected error occurred\",\"instance\":\"/api/message/sanitize\",\"status\":500,\"title\":\"Internal Server Error\"}", response);
+    }
+
+    @Test
+    void sanitizeEndpoint_shouldMaskSensitiveContent() throws Exception {
+        SensitiveWord word = new SensitiveWord();
+        word.setWord("confidential");
+        sensitiveWordRepository.save(word);
+        sanitizerService.refreshDictionary();
+
+        MessageDto request = new MessageDto("This is CONFideNtial! data");
+
+        mockMvc.perform(post("/api/message/sanitize")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sanitizedMessage").value("This is ************! data"));
     }
 }
