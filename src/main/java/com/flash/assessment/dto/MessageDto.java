@@ -1,7 +1,10 @@
-package com.flash.assessment.model;
+package com.flash.assessment.dto;
 
-public class UserMessage {
+import jakarta.validation.constraints.NotBlank;
 
+public class MessageDto {
+
+    @NotBlank(message = "The sensitive word cannot be blank or empty")
     private String message;
 
     public String getMessage() {
