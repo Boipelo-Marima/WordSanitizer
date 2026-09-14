@@ -1,9 +1,11 @@
 package com.flash.assessment.controller;
 
+import com.flash.assessment.dto.SensitiveWordDto;
 import com.flash.assessment.model.SensitiveWord;
 import com.flash.assessment.service.SanitizerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +23,7 @@ public class AdminController {
         this.sanitizerService = sanitizerService;
     }
 
-    @PostMapping("/refresh-dictionary")
+    @PostMapping("/refresh")
     @Operation(summary = "Refresh word cache",
             description = "This refreshes the word cache to get any new words added to the database")
     public ResponseEntity<String> refreshDictionary() {
@@ -29,7 +31,7 @@ public class AdminController {
         return ResponseEntity.ok("Dictionary successfully refreshed in memory.");
     }
 
-    @GetMapping("/all-words")
+    @GetMapping("/words")
     @Operation(summary = "Get all words",
             description = "Gets all the words currently regarded as sensitive")
     public ResponseEntity<List<SensitiveWord>> getAllWords() {
@@ -39,7 +41,7 @@ public class AdminController {
     @PostMapping("/add")
     @Operation(summary = "Add Sensitive word",
             description = "Endpoint to add a new sensitive word to the DB")
-    public ResponseEntity<SensitiveWord> addWord(@RequestBody SensitiveWord word) {
+    public ResponseEntity<SensitiveWord> addWord(@Valid @RequestBody SensitiveWordDto word) {
         SensitiveWord created = sanitizerService.addWord(word);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -47,7 +49,7 @@ public class AdminController {
     @PutMapping("/{id}")
     @Operation(summary = "Update a sensitive word",
             description = "Update an existing sensitive word using the id as an identifier")
-    public ResponseEntity<SensitiveWord> updateWord(@PathVariable Long id, @RequestBody SensitiveWord word) {
+    public ResponseEntity<SensitiveWord> updateWord(@PathVariable Long id, @Valid @RequestBody SensitiveWordDto word) {
         SensitiveWord updated = sanitizerService.updateWord(id, word);
         return ResponseEntity.ok(updated);
     }

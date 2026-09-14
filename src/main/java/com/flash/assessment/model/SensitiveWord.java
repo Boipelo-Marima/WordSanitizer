@@ -7,9 +7,11 @@ import jakarta.persistence.Table;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Column;
 
+import java.io.Serializable;
+
 @Entity
 @Table(name = "sensitive_words")
-public class SensitiveWord {
+public class SensitiveWord implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

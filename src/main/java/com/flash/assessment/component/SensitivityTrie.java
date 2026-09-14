@@ -50,5 +50,7 @@ public class SensitivityTrie {
         return new String(chars);
     }
 
+    public void clear(){root.children.clear();}
+
     public boolean isPopulated(){return !root.children.isEmpty(); }
 }

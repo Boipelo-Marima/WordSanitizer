@@ -1,6 +1,8 @@
 package com.flash.assessment.service;
 
 import com.flash.assessment.component.SensitivityTrie;
+import com.flash.assessment.dto.SanitizedMessageDto;
+import com.flash.assessment.dto.SensitiveWordDto;
 import com.flash.assessment.event.DictionaryChangedEvent;
 import com.flash.assessment.exception.NoDataFoundException;
 import com.flash.assessment.model.SensitiveWord;
@@ -31,16 +33,18 @@ public class SanitizerService {
     }
 
     public void refreshDictionary() {
+        sensitivityTrie.clear();
+
         List<SensitiveWord> sensitiveWords = sensitiveWordRepository.findAll();
         for (SensitiveWord sensitiveWord : sensitiveWords) {
             sensitivityTrie.insert(sensitiveWord.getWord());
         }
     }
 
-    public String processMessage(String message) {
+    public SanitizedMessageDto processMessage(String message) {
         if (message.isEmpty()) throw new IllegalArgumentException("Empty message.");
         if(!sensitivityTrie.isPopulated()) refreshDictionary();
-        return sensitivityTrie.sanitize(message, "*");
+        return new SanitizedMessageDto(sensitivityTrie.sanitize(message, "*"));
     }
 
     @Cacheable(value = "sensitiveWords")
@@ -50,7 +54,10 @@ public class SanitizerService {
     }
 
     @Transactional
-    public SensitiveWord addWord(SensitiveWord word) {
+    public SensitiveWord addWord(SensitiveWordDto wordDto) {
+        SensitiveWord word = new SensitiveWord();
+        word.setWord(wordDto.word().trim().toLowerCase());
+
         if (sensitiveWordRepository.existsByWordIgnoreCase(word.getWord())) {
             throw new IllegalArgumentException("Word already exists in dictionary.");
         }
@@ -60,17 +67,30 @@ public class SanitizerService {
     }
 
     @Transactional
-    public SensitiveWord updateWord(Long id, SensitiveWord newWord) {
-        SensitiveWord word = sensitiveWordRepository.findById(id)
+    public SensitiveWord updateWord(Long id, SensitiveWordDto newWord) {
+
+        SensitiveWord existingWord = sensitiveWordRepository.findById(id)
                 .orElseThrow(() -> new NoDataFoundException("Word not found"));
-        word.setWord(newWord.getWord());
-        SensitiveWord updated = sensitiveWordRepository.save(word);
+
+        String normalizedWord = newWord.word().trim().toLowerCase();
+
+        if (sensitiveWordRepository.existsByWordIgnoreCase(normalizedWord) &&
+                !existingWord.getWord().equals(normalizedWord)) {
+            throw new IllegalArgumentException("Word already exists in dictionary.");
+        }
+
+        existingWord.setWord(normalizedWord);
+        SensitiveWord updated = sensitiveWordRepository.save(existingWord);
+
         eventPublisher.publishEvent(new DictionaryChangedEvent());
         return updated;
     }
 
     @Transactional
     public void deleteWord(Long id) {
+        if (!sensitiveWordRepository.existsById(id)) {
+            throw new NoDataFoundException("Word not found with id: " + id);
+        }
         sensitiveWordRepository.deleteById(id);
         eventPublisher.publishEvent(new DictionaryChangedEvent());
     }
