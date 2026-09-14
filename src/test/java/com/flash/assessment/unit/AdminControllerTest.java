@@ -1,14 +1,18 @@
 package com.flash.assessment.unit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flash.assessment.config.CacheConfig;
 import com.flash.assessment.controller.AdminController;
+import com.flash.assessment.dto.SensitiveWordDto;
 import com.flash.assessment.model.SensitiveWord;
 import com.flash.assessment.service.SanitizerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,6 +26,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AdminController.class)
+@ActiveProfiles("test")
+@Import(CacheConfig.class)
 public class AdminControllerTest {
 
     @Autowired
@@ -36,7 +42,7 @@ public class AdminControllerTest {
     void refreshDictionary_shouldReturnOk() throws Exception {
         doNothing().when(sanitizerService).refreshDictionary();
 
-        mockMvc.perform(post("/api/admin/refresh-dictionary"))
+        mockMvc.perform(post("/api/admin/refresh"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Dictionary successfully refreshed in memory."));
     }
@@ -49,7 +55,7 @@ public class AdminControllerTest {
 
         when(sanitizerService.getAllWords()).thenReturn(List.of(word));
 
-        mockMvc.perform(get("/api/admin/all-words"))
+        mockMvc.perform(get("/api/admin/words"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1L))
                 .andExpect(jsonPath("$[0].word").value("test"));
@@ -64,7 +70,7 @@ public class AdminControllerTest {
         saved.setId(1L);
         saved.setWord("test");
 
-        when(sanitizerService.addWord(any(SensitiveWord.class))).thenReturn(saved);
+        when(sanitizerService.addWord(any(SensitiveWordDto.class))).thenReturn(saved);
 
         mockMvc.perform(post("/api/admin/add")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,7 +86,7 @@ public class AdminControllerTest {
         updatedWord.setId(1L);
         updatedWord.setWord("updated");
 
-        when(sanitizerService.updateWord(eq(1L), any(SensitiveWord.class))).thenReturn(updatedWord);
+        when(sanitizerService.updateWord(eq(1L), any(SensitiveWordDto.class))).thenReturn(updatedWord);
 
         mockMvc.perform(put("/api/admin/1")
                         .contentType(MediaType.APPLICATION_JSON)

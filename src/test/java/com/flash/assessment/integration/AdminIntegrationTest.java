@@ -1,6 +1,7 @@
 package com.flash.assessment.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flash.assessment.dto.SensitiveWordDto;
 import com.flash.assessment.model.SensitiveWord;
 import com.flash.assessment.repository.SensitiveWordRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@ActiveProfiles("test")
 public class AdminIntegrationTest {
 
     @Autowired
@@ -40,7 +43,7 @@ public class AdminIntegrationTest {
         word.setWord("spam");
         sensitiveWordRepository.save(word);
 
-        mockMvc.perform(get("/api/admin/all-words"))
+        mockMvc.perform(get("/api/admin/words"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].word").value("spam"));
@@ -48,8 +51,7 @@ public class AdminIntegrationTest {
 
     @Test
     void addWord_shouldCreateAndReturnWord() throws Exception {
-        SensitiveWord newWord = new SensitiveWord();
-        newWord.setWord("malicious");
+        SensitiveWordDto newWord = new SensitiveWordDto("malicious");
 
         mockMvc.perform(post("/api/admin/add")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,11 +67,11 @@ public class AdminIntegrationTest {
         saved.setWord("oldword");
         saved = sensitiveWordRepository.save(saved);
 
-        saved.setWord("updatedword");
+        SensitiveWordDto updateDto = new SensitiveWordDto("updatedword");
 
         mockMvc.perform(put("/api/admin/" + saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(saved)))
+                        .content(objectMapper.writeValueAsString(updateDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.word").value("updatedword"));
     }
@@ -86,7 +88,7 @@ public class AdminIntegrationTest {
 
     @Test
     void refreshDictionary_shouldSucceed() throws Exception {
-        mockMvc.perform(post("/api/admin/refresh-dictionary"))
+        mockMvc.perform(post("/api/admin/refresh"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Dictionary successfully refreshed in memory."));
     }
@@ -97,8 +99,7 @@ public class AdminIntegrationTest {
         word.setWord("duplicate");
         sensitiveWordRepository.save(word);
 
-        SensitiveWord duplicate = new SensitiveWord();
-        duplicate.setWord("duplicate");
+        SensitiveWordDto duplicate = new SensitiveWordDto("duplicate");
 
         mockMvc.perform(post("/api/admin/add")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -108,8 +109,7 @@ public class AdminIntegrationTest {
 
     @Test
     void updateNonExistentWord_shouldFail() throws Exception {
-        SensitiveWord word = new SensitiveWord();
-        word.setWord("missing");
+        SensitiveWordDto word = new SensitiveWordDto("missing");
 
         mockMvc.perform(put("/api/admin/99999")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -1,6 +1,9 @@
 package com.flash.assessment.unit;
 
 import com.flash.assessment.component.SensitivityTrie;
+import com.flash.assessment.config.CacheConfig;
+import com.flash.assessment.dto.SensitiveWordDto;
+import com.flash.assessment.event.DictionaryChangedEvent;
 import com.flash.assessment.exception.NoDataFoundException;
 import com.flash.assessment.model.SensitiveWord;
 import com.flash.assessment.repository.SensitiveWordRepository;
@@ -11,6 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +26,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@ActiveProfiles("test")
+@Import(CacheConfig.class)
 public class SanitizerServiceTest {
 
     @Mock
@@ -27,6 +35,9 @@ public class SanitizerServiceTest {
 
     @Mock
     private SensitivityTrie sensitivityTrie;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private SanitizerService sanitizerService;
@@ -36,8 +47,8 @@ public class SanitizerServiceTest {
     @BeforeEach
     void setUp() {
         word = new SensitiveWord();
-        word.setId(1L);
         word.setWord("password");
+        word.setId(1L);
     }
 
     @Test
@@ -54,7 +65,7 @@ public class SanitizerServiceTest {
     void processMessage_shouldSanitizeText() {
         when(sensitivityTrie.sanitize("test password", "*")).thenReturn("test ********");
 
-        String result = sanitizerService.processMessage("test password");
+        String result = sanitizerService.processMessage("test password").sanitizedMessage();
 
         assertEquals("test ********", result);
     }
@@ -66,27 +77,26 @@ public class SanitizerServiceTest {
         List<SensitiveWord> words = sanitizerService.getAllWords();
 
         assertEquals(1, words.size());
-        assertEquals("password", words.get(0).getWord());
+        assertEquals("password", words.getFirst().getWord());
     }
 
     @Test
     void addWord_shouldSaveAndRefresh() {
         when(sensitiveWordRepository.existsByWordIgnoreCase("password")).thenReturn(false);
         when(sensitiveWordRepository.save(any(SensitiveWord.class))).thenReturn(word);
-        when(sensitiveWordRepository.findAll()).thenReturn(List.of(word));
 
-        SensitiveWord saved = sanitizerService.addWord(word);
+        SensitiveWord saved = sanitizerService.addWord(new SensitiveWordDto(word.getWord()));
 
         assertNotNull(saved);
-        verify(sensitiveWordRepository).save(word);
-        verify(sensitivityTrie).insert("password");
+        verify(sensitiveWordRepository).save(any(word.getClass()));
+        verify(eventPublisher).publishEvent(any(DictionaryChangedEvent.class));
     }
 
     @Test
     void addWord_shouldThrowExceptionWhenExists() {
         when(sensitiveWordRepository.existsByWordIgnoreCase("password")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> sanitizerService.addWord(word));
+        assertThrows(IllegalArgumentException.class, () -> sanitizerService.addWord(new SensitiveWordDto(word.getWord())));
         verify(sensitiveWordRepository, never()).save(any());
     }
 
@@ -97,26 +107,25 @@ public class SanitizerServiceTest {
 
         when(sensitiveWordRepository.findById(1L)).thenReturn(Optional.of(word));
         when(sensitiveWordRepository.save(any(SensitiveWord.class))).thenReturn(word);
-        when(sensitiveWordRepository.findAll()).thenReturn(List.of(word));
 
-        SensitiveWord result = sanitizerService.updateWord(1L, updatedDetails);
+        SensitiveWord result = sanitizerService.updateWord(1L, new SensitiveWordDto(updatedDetails.getWord()));
 
         assertNotNull(result);
         verify(sensitiveWordRepository).save(word);
-        verify(sensitivityTrie).insert("newpass");
+        verify(eventPublisher).publishEvent(any(DictionaryChangedEvent.class));
     }
 
     @Test
     void updateWord_shouldThrowExceptionWhenNotFound() {
         when(sensitiveWordRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(NoDataFoundException.class, () -> sanitizerService.updateWord(1L, word));
+        assertThrows(NoDataFoundException.class, () -> sanitizerService.updateWord(1L, new SensitiveWordDto(word.getWord())));
     }
 
     @Test
     void deleteWord_shouldDeleteAndRefresh() {
+        when(sensitiveWordRepository.existsById(1L)).thenReturn(true);
         doNothing().when(sensitiveWordRepository).deleteById(1L);
-        when(sensitiveWordRepository.findAll()).thenReturn(List.of());
 
         sanitizerService.deleteWord(1L);
 

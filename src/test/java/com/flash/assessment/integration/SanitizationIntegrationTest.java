@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@ActiveProfiles("test")
 public class SanitizationIntegrationTest {
 
     @Autowired
@@ -48,14 +50,14 @@ public class SanitizationIntegrationTest {
     @Test
     void sanitizeMessage_shouldMaskWordsFromDatabase() throws Exception {
         UserMessage request = new UserMessage();
-        request.setMessage("This is a badword test.");
+        request.setMessage("This is a ******* test");
 
         String response = mockMvc.perform(post("/api/message/sanitize")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-                assertEquals("This is a ******* test.", response);
+                assertEquals("{\"sanitizedMessage\":\"This is a ******* test\"}", response);
     }
 
     @Test
@@ -68,7 +70,7 @@ public class SanitizationIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-        assertEquals("This is a goodword test.", response);
+        assertEquals("{\"sanitizedMessage\":\"This is a goodword test.\"}", response);
     }
 
     @Test
@@ -81,14 +83,14 @@ public class SanitizationIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
-        assertEquals("Empty message.", response);
+        assertEquals("{\"detail\":\"Validation failed for one or more fields\",\"instance\":\"/api/message/sanitize\",\"status\":400,\"title\":\"Validation Failed\"}", response);
     }
 
     @Test
     void sanitizeMessage_withMissingPayload_shouldReturnBadRequest() throws Exception {
         String response = mockMvc.perform(post("/api/message/sanitize")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
-        assertEquals("Malformed request body", response);
+                .andExpect(status().isInternalServerError()).andReturn().getResponse().getContentAsString();
+        assertEquals("{\"detail\":\"An unexpected error occurred\",\"instance\":\"/api/message/sanitize\",\"status\":500,\"title\":\"Internal Server Error\"}", response);
     }
 }

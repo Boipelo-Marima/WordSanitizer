@@ -2,7 +2,6 @@ package com.flash.assessment.controller;
 
 import com.flash.assessment.dto.MessageDto;
 import com.flash.assessment.dto.SanitizedMessageDto;
-import com.flash.assessment.model.UserMessage;
 import com.flash.assessment.service.SanitizerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,7 +27,7 @@ public class MessageController {
     @Operation(summary = "Sanitize sensitive words",
             description = "This endpoint receives a message and sanitizes any sensitive words")
     public ResponseEntity<SanitizedMessageDto> sanitizeMessage(@Valid @RequestBody MessageDto request) {
-        SanitizedMessageDto sanitizedText = sanitizerService.processMessage(request.getMessage());
+        SanitizedMessageDto sanitizedText = sanitizerService.processMessage(request.message());
         return ResponseEntity.ok(sanitizedText);
     }
 }
