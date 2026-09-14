@@ -16,7 +16,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -50,28 +49,27 @@ public class SanitizationIntegrationTest {
 
     @Test
     void sanitizeMessage_shouldMaskWordsFromDatabase() throws Exception {
-        UserMessage request = new UserMessage();
-        request.setMessage("This is a ******* test");
 
-        String response = mockMvc.perform(post("/api/message/sanitize")
+        UserMessage request = new UserMessage();
+        request.setMessage("This is a badword test");
+
+        mockMvc.perform(post("/api/message/sanitize")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-
-                assertEquals("{\"sanitizedMessage\":\"This is a ******* test\"}", response);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sanitizedMessage").value("This is a ******* test"));
     }
 
     @Test
-    void sanitizeMessage_shouldNotAnyMaskWords() throws Exception {
+    void sanitizeMessage_shouldNotMaskAnyWords() throws Exception {
         UserMessage request = new UserMessage();
         request.setMessage("This is a goodword test.");
 
-        String response = mockMvc.perform(post("/api/message/sanitize")
+        mockMvc.perform(post("/api/message/sanitize")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-
-        assertEquals("{\"sanitizedMessage\":\"This is a goodword test.\"}", response);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sanitizedMessage").value("This is a goodword test."));
     }
 
     @Test
@@ -79,20 +77,25 @@ public class SanitizationIntegrationTest {
         UserMessage request = new UserMessage();
         request.setMessage("");
 
-        String response = mockMvc.perform(post("/api/message/sanitize")
+        mockMvc.perform(post("/api/message/sanitize")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
-
-        assertEquals("{\"detail\":\"Validation failed for one or more fields\",\"instance\":\"/api/message/sanitize\",\"status\":400,\"title\":\"Validation Failed\"}", response);
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.title").value("Validation Failed"))
+                .andExpect(jsonPath("$.detail").value("Validation failed for one or more fields"))
+                .andExpect(jsonPath("$.instance").value("/api/message/sanitize"));
     }
 
     @Test
-    void sanitizeMessage_withMissingPayload_shouldReturnBadRequest() throws Exception {
-        String response = mockMvc.perform(post("/api/message/sanitize")
+    void sanitizeMessage_withMissingPayload_shouldReturnInternalServerError() throws Exception {
+        mockMvc.perform(post("/api/message/sanitize")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError()).andReturn().getResponse().getContentAsString();
-        assertEquals("{\"detail\":\"An unexpected error occurred\",\"instance\":\"/api/message/sanitize\",\"status\":500,\"title\":\"Internal Server Error\"}", response);
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.title").value("Internal Server Error"))
+                .andExpect(jsonPath("$.detail").value("An unexpected error occurred"))
+                .andExpect(jsonPath("$.instance").value("/api/message/sanitize"));
     }
 
     @Test

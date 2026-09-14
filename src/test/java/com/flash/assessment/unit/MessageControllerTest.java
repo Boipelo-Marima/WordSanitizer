@@ -41,11 +41,10 @@ public class MessageControllerTest {
         when(sanitizerService.processMessage("This is a badword test"))
                 .thenReturn(new SanitizedMessageDto("This is a ***** test"));
 
-        String response = mockMvc.perform(post("/api/message/sanitize")
+        mockMvc.perform(post("/api/message/sanitize")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-
-                assertEquals("{\"sanitizedMessage\":\"This is a ***** test\"}", response);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sanitizedMessage").value("This is a ***** test"));
     }
 }
