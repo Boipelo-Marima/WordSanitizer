@@ -10,6 +10,10 @@
     - An API point that takes a single a word to check if it is sensitive
 
 ## Deployment Strategy
-    - Build the Microservice as a Docker image, this helps to run it in multiple environments
-    - Deploy on a service like OpenShift, it is Docker ready and has built-in security features
+    - Containerization: Package the application into a multi-stage Docker image to guarantee runtime environment parity 
+        across local, staging, and production tiers.
+    - Container Orchestration: Deploy workloads onto an enterprise Kubernetes platform, such as Red Hat OpenShift to
+        leverage automated scaling, native health probing, and seamless rolling updates.
+    - Security & Compliance: Utilize OpenShift's built-in governance features, including restrictive Security Context
+        Constraints, role-based access control, and automated container vulnerability scanning.
     
